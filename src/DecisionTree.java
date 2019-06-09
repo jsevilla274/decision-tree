@@ -13,6 +13,7 @@ public class DecisionTree
 
     private void generate(Node node, String[][] database, String[] attributeList)
     {
+        attributeList = Arrays.copyOf(attributeList, attributeList.length); // deep copy
         // (2) assume: if tuples in database are same class C, return class C
 
         // (4) if attribute list is empty then
