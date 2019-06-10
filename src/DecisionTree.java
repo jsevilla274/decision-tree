@@ -293,8 +293,31 @@ public class DecisionTree
 
         return: the correct class (in this case "yes" or "no")
      */
-    public String classifyTuple(String[] tuple)
+    
+    public String classifyTuple(String[] tuple, String[] attributeList)
     {
-        return "";
+        Node curr = root;
+      
+        while (!curr.isLeaf())
+        {
+            // finds the attribute being tested
+            for (int i = 0; i < attributeList.length; i++) 
+            {
+                if (curr.getInfo().equals(attributeList[i]))
+                {   
+                    // finds the branch to take
+                    for (int j = 0; j < curr.branchNames.length; j++)
+                    {
+                        if (curr.branchNames[j].equals(tuple[i])) 
+                        {
+                            curr = curr.branches[j];
+                            break;
+                        }
+                    }
+                    break;
+                }
+            } 
+        }
+        return curr.getInfo();
     }
 }
