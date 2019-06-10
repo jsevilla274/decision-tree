@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class DecisionTree
 {
@@ -23,9 +25,8 @@ public class DecisionTree
             return;
         }
 
-        // (6) int splittingAttr = splittingCriterion(database, attributeList);
-        int splittingAttr = 0;  // TEST: 0 = age
-
+        int splittingAttr = splittingCriterion(database, attributeList);
+        
         // (7) label node N with splitting criterion
         node.setInfo(attributeList[splittingAttr]);
 
@@ -51,12 +52,12 @@ public class DecisionTree
         {
             partition = partitionByValue(database, splittingAttr, node.branchNames[i]);
 
-            // printPartition(partition, "age", node.branchNames[i]); // dev test
+            //printPartition(partition, "value", node.branchNames[i]); // dev test
 
             // (12) assume: partition is not empty
             // (14) "attach" node through new generation
             node.branches[i] = new Node();
-            generate(node.branches[i], partition, new String[0]); // "new String[0]" forces end at 1st level
+            generate(node.branches[i], partition, attributeList); // "new String[0]" forces end at 1st level
         }
     }
 
@@ -162,9 +163,123 @@ public class DecisionTree
 
         Be sure you use Information Gain
      */
+    
     private int splittingCriterion(String[][] database, String[] attributeList)
     {
-        return 0;
+        testPrint(database, attributeList);                                             //  <-  debugging
+        
+        String[] classLabels = findValues(database, database[0].length - 1);
+        double infoD = getInfo(database, classLabels);
+        
+        double highestGain = 0;
+        int bestAttribute = 0;
+        
+        for (int currentAttr = 0; currentAttr < attributeList.length; currentAttr++) {
+            double infoAttr = getInfo(database, currentAttr, classLabels);
+            double gain = infoD - infoAttr; 
+            
+            if (gain > highestGain) {
+                highestGain = gain;
+                bestAttribute = currentAttr;
+            }
+        }
+        System.out.println("Splitting attribute chosen: " + bestAttribute + "\n");      // <-  debugging
+        
+        return bestAttribute;
+    }
+    
+    private double getInfo(String[][] database, String[] classLabels) 
+    {
+        final int classLabelIndex = database[0].length - 1;
+        final int totalCount = database.length; 
+        
+        int frequency[] = new int[classLabels.length];
+
+        for (String[] tuple : database) {
+            for (int i = 0; i < classLabels.length; i++) {
+                if (tuple[classLabelIndex].equals(classLabels[i])) {
+                    frequency[i]++;
+                    break;
+                }
+            }
+        }
+        
+        double info = 0.0;
+        for (int current : frequency) {
+            final double proportion = current / (double) totalCount;
+            if (proportion > 0) {
+                info += -1 * proportion * Math.log(proportion) / Math.log(2);
+            }
+        }
+        return info;
+    }
+    
+    private double getInfo(String[][] database, int attrIndex, String[] classLabels) 
+    {    
+        final int classLabelIndex = database[0].length - 1;
+        final int totalCount = database.length; 
+        
+        final String attrValues[] = findValues(database, attrIndex);
+        int frequencyTable[][] = new int[attrValues.length][classLabels.length];
+        
+        // Associate attribute value string to an index
+        Map <String,Integer> attrToIndex = new HashMap<>();
+        for (int i = 0; i < attrValues.length; i++) {
+            attrToIndex.put(attrValues[i], i);
+        }
+        
+        // Associate classLabel string to an index
+        Map <String,Integer> classToIndex = new HashMap<>();
+        for (int i = 0; i < classLabels.length; i++) {
+            classToIndex.put(classLabels[i], i);
+        }
+        
+        // Populate frequency table
+        for (String[] tuple : database) {
+            final String attributeValue = tuple[attrIndex];
+            final String classLabel = tuple[classLabelIndex];
+            frequencyTable[attrToIndex.get(attributeValue)][classToIndex.get(classLabel)]++;
+        }
+        
+        double info = 0.0;
+        
+        // Calculate info from frequency table
+        for (int current[] : frequencyTable) {
+            int sum = 0;
+            for (int e : current) {
+                sum += e;
+            }
+            
+            double A = sum / (double) totalCount;
+            double B = 0.0;
+      
+            for (int i = 0; i < classLabels.length; i++) {
+                final double proportion = current[i] / (double) sum;
+                if (proportion > 0) {
+                    B += -1 * proportion * Math.log(proportion) / Math.log(2);
+                }
+            }
+            info += A * B;
+        }
+        
+        return info;
+    }
+    
+    // For debugging: to delete later
+    private void testPrint(String[][] database, String[] attributeList)                // <-  debugging
+    {
+        for (int i = 0; i < attributeList.length; i++) {
+            System.out.print(attributeList[i].toUpperCase() + ", ");
+        }
+        System.out.print("CLASS LABEL");
+        System.out.println();
+        for (int y = 0; y < database.length; y++) {
+            for (int x = 0; x < database[0].length; x++) {
+                System.out.print(database[y][x] + ", ");
+            }
+            System.out.println();
+        }
+        
     }
 
     /*
