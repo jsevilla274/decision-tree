@@ -1,3 +1,9 @@
+/**
+ * DecisionTree.java
+ *
+ * Takes in a database of training tuples with class labels and its associated
+ * attribute list and generates a trained decision tree.
+ */
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -5,17 +11,35 @@ import java.util.Map;
 
 public class DecisionTree
 {
-    private Node root;
+    private Node root;                  // root of the decision tree
+    private final String[] ATTR_LIST;   // the initial attribute list
 
     public DecisionTree(String[][] database, String[] attributeList)
     {
+        ATTR_LIST = attributeList;
         root = new Node();
         generate(root, database, attributeList);
     }
 
+    /**
+     * Recursively generates a trained decision tree.
+     *
+     * NOTE: This partial implementation of the decision tree only renders the
+     * "first" level of the decision tree, and derives a class label through
+     * the "majority class" method.
+     *
+     * "DISPLAYING" code may be removed, and "assumptions" may be implemented
+     * for further development.
+     *
+     * @param node the current tree node
+     * @param database A 2-D array of n-attribute training tuples with
+     *                 associated class labels as the n+1th element
+     * @param attributeList A list of attribute names associated with training tuples
+     */
     private void generate(Node node, String[][] database, String[] attributeList)
     {
         attributeList = Arrays.copyOf(attributeList, attributeList.length); // deep copy
+
         // (2) assume: if tuples in database are same class C, return class C
 
         // (4) if attribute list is empty then
@@ -25,6 +49,7 @@ public class DecisionTree
             return;
         }
 
+        // (6) find best splitting criterion
         int splittingAttr = splittingCriterion(database, attributeList);
         
         // (7) label node N with splitting criterion
@@ -46,35 +71,64 @@ public class DecisionTree
         node.branchNames = findValues(database, splittingAttr);
         node.branches = new Node[node.branchNames.length];
 
+        // DISPLAYING splitting attribute of frist level
+        System.out.println("\nsplitting by attribute: " + node.getInfo() + "\n");
+
         // (10) create a partition for each branch
         String[][] partition;
         for (int i = 0; i < node.branchNames.length; i++)
         {
             partition = partitionByValue(database, splittingAttr, node.branchNames[i]);
 
-            //printPartition(partition, "value", node.branchNames[i]); // dev test
+            // DISPLAYING tuples of first level
+            displayLV1Partition(partition, attributeList, node.getInfo(), node.branchNames[i]);
 
             // (12) assume: partition is not empty
             // (14) "attach" node through new generation
             node.branches[i] = new Node();
-            generate(node.branches[i], partition, attributeList); // "new String[0]" forces end at 1st level
+            generate(node.branches[i], partition, new String[0]); // "new String[0]" forces end at 1st level
         }
     }
 
-    // for testing only
-    private void printPartition(String[][] database, String splittingAttr, String value)
+    /**
+     * Displays a partition of the first level of the tree.
+     *
+     * @param database a given partition of the db
+     * @param attrList attributes associated with partition
+     * @param splittingAttr the attribute by which the partitioning was done
+     * @param splittingValue the attribute value of the branch
+     */
+    private void displayLV1Partition(String[][] database, String[] attrList,
+                                     String splittingAttr, String splittingValue)
     {
-        System.out.println("\n" + splittingAttr + ": " + value);
-        for (int i = 0; i < database.length; i++)
+        System.out.println(splittingAttr + ": " + splittingValue);
+        String[] tuple;
+
+        // appending "class" to attrList
+        attrList = Arrays.copyOf(attrList, attrList.length + 1);
+        attrList[attrList.length - 1] = "class";
+
+        // printing tuples
+        for (int i = -1; i < database.length; i++)
         {
-            for (int j = 0; j < database[0].length; j++)
+            tuple = (i == -1) ? attrList : database[i];
+
+            for (String value: tuple)
             {
-                System.out.print(database[i][j] + " ");
+                System.out.printf("%-16s", value);
             }
             System.out.println();
         }
+        System.out.println();
     }
 
+    /**
+     * Finds the majority class label of the tuples in a given database.
+     *
+     * @param database A 2-D array of n-attribute training tuples with
+     *                 associated class labels as the n+1th element
+     * @return the class label
+     */
     private String majorityClass(String[][] database)
     {
         // get class "values"
@@ -109,35 +163,55 @@ public class DecisionTree
         return classes[maxClassIndex];
     }
 
-    private String[] findValues(String[][] database, int splittingAttr)
+    /**
+     * Finds the values of an attribute from tuples in a given database.
+     *
+     * @param database A 2-D array of n-attribute training tuples with
+     *                 associated class labels as the n+1th element
+     * @param attrIndex the index of the attribute whose values must be discovered
+     *
+     * @return a list of values
+     */
+    private String[] findValues(String[][] database, int attrIndex)
     {
         ArrayList<String> splittingValues = new ArrayList<>();
-        for (int i = 0; i < database.length; i++)
+        for (int tupleIndex = 0; tupleIndex < database.length; tupleIndex++)
         {
-            if (!splittingValues.contains(database[i][splittingAttr]))
+            if (!splittingValues.contains(database[tupleIndex][attrIndex]))
             {
-                splittingValues.add(database[i][splittingAttr]);
+                splittingValues.add(database[tupleIndex][attrIndex]);
             }
         }
 
         return splittingValues.toArray(new String[0]);
     }
 
-    private String[][] partitionByValue(String[][] database, int splittingAttr, String value)
+    /**
+     * Partitions a database by a given attribute value
+     *
+     * @param database A 2-D array of n-attribute training tuples with
+     *                 associated class labels as the n+1th element
+     * @param attrIndex the index of the attribute
+     * @param value the string value of the attribute
+     *
+     * @return a partition of similarly-valued tuples
+     */
+    private String[][] partitionByValue(String[][] database, int attrIndex, String value)
     {
-        String[][] partition = new String[database.length][(database[0].length - 1)]; // reduced horizontally to account for 1 less attr
+        int attributes = database[0].length - 1;
+        String[][] partition = new String[database.length][attributes];
         int tuples = 0;
         int dbCount;
         for (int i = 0; i < database.length; i++)
         {
             // if tuple has specified value in attribute
-            if (database[i][splittingAttr].equals(value))
+            if (database[i][attrIndex].equals(value))
             {
                 // insert the tuple into the partition
                 dbCount = 0;
-                for (int j = 0; j < database[0].length - 1; j++)
+                for (int j = 0; j < attributes; j++)
                 {
-                    if (dbCount == splittingAttr)
+                    if (dbCount == attrIndex)
                     {
                         j--; //skip splittingAttr
                     }
@@ -151,23 +225,21 @@ public class DecisionTree
             }
         }
 
-        // return partition
         return Arrays.copyOf(partition, tuples);
     }
 
-    /*
-        PART 2
-        Dev notes: The only special consideration here is make sure you return
-        the INDEX of the attribute (from attributeList) that we should split by
-        (i.e. if age, then 0. if income, then 1)
-
-        Be sure you use Information Gain
+    /**
+     * Finds the most suitable attribute by which to split a given database using
+     * Information Gain.
+     *
+     * @param database A 2-D array of n-attribute training tuples with
+     *                 associated class labels as the n+1th element
+     * @param attributeList A list of attribute names associated with training tuples
+     *
+     * @return the index of the best attribute by which to partition
      */
-    
     private int splittingCriterion(String[][] database, String[] attributeList)
     {
-        testPrint(database, attributeList);                                             //  <-  debugging
-        
         String[] classLabels = findValues(database, database[0].length - 1);
         double infoD = getInfo(database, classLabels);
         
@@ -183,7 +255,6 @@ public class DecisionTree
                 bestAttribute = currentAttr;
             }
         }
-        System.out.println("Splitting attribute chosen: " + bestAttribute + "\n");      // <-  debugging
         
         return bestAttribute;
     }
@@ -264,51 +335,28 @@ public class DecisionTree
         
         return info;
     }
-    
-    // For debugging: to delete later
-    private void testPrint(String[][] database, String[] attributeList)                // <-  debugging
-    {
-        for (int i = 0; i < attributeList.length; i++) {
-            System.out.print(attributeList[i].toUpperCase() + ", ");
-        }
-        System.out.print("CLASS LABEL");
-        System.out.println();
-        for (int y = 0; y < database.length; y++) {
-            for (int x = 0; x < database[0].length; x++) {
-                System.out.print(database[y][x] + ", ");
-            }
-            System.out.println();
-        }
-        
-    }
 
-    /*
-        PART 3
-        Dev notes: After initialization of this class, the tree is created.
-        The only thing you must do is traverse the decision tree through the
-        "root" node.
-
-        Note each branch from a node has a corresponding node in the .branch array
-        and a value in .branchNames array (logically connected by indexes)
-
-        return: the correct class (in this case "yes" or "no")
+    /**
+     * Classifies a given tuples using the trained decision tree.
+     *
+     * @param tuple an input tuple
+     * @return the class label of the input
      */
-    
-    public String classifyTuple(String[] tuple, String[] attributeList)
+    public String classifyTuple(String[] tuple)
     {
         Node curr = root;
-      
+
         while (!curr.isLeaf())
         {
             // finds the attribute being tested
-            for (int i = 0; i < attributeList.length; i++) 
+            for (int i = 0; i < ATTR_LIST.length; i++)
             {
-                if (curr.getInfo().equals(attributeList[i]))
-                {   
+                if (curr.getInfo().equals(ATTR_LIST[i]))
+                {
                     // finds the branch to take
                     for (int j = 0; j < curr.branchNames.length; j++)
                     {
-                        if (curr.branchNames[j].equals(tuple[i])) 
+                        if (curr.branchNames[j].equals(tuple[i]))
                         {
                             curr = curr.branches[j];
                             break;
@@ -316,7 +364,7 @@ public class DecisionTree
                     }
                     break;
                 }
-            } 
+            }
         }
         return curr.getInfo();
     }
